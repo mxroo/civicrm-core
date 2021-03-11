@@ -83,6 +83,7 @@ class CRM_Upgrade_Incremental_php_FiveThirtySix extends CRM_Upgrade_Incremental_
       'civicrm_saved_search', 'description', "text DEFAULT NULL");
 
     $this->addTask('core-issue#2422 - Add constraints to civicrm_saved_search', 'taskAddConstraints');
+    $this->addTask('core-issue#1845 - Alter Foreign key on civicrm_group to delete when the associated group when the saved search is deleted', 'alterSavedSearchFK');
 
   }
 
@@ -110,6 +111,18 @@ class CRM_Upgrade_Incremental_php_FiveThirtySix extends CRM_Upgrade_Incremental_
       ");
     }
 
+    return TRUE;
+  }
+
+  /**
+   * @param \CRM_Queue_TaskContext $ctx
+   *
+   * @return bool
+   */
+  public static function alterSavedSearchFK(CRM_Queue_TaskContext $ctx) {
+    CRM_Core_BAO_SchemaHandler::safeRemoveFK('civicrm_group', 'FK_civicrm_group_saved_search_id');
+    CRM_Core_DAO::executeQuery('DELETE civicrm_saved_search FROM civicrm_saved_search LEFT JOIN civicrm_group ON civicrm_saved_search.id = civicrm_group.saved_search_id WHERE civicrm_group.id IS NULL AND form_values IS NOT NULL and api_params IS NULL');
+    CRM_Core_DAO::executeQuery('ALTER TABLE civicrm_group ADD CONSTRAINT `FK_civicrm_group_saved_search_id` FOREIGN KEY (`saved_search_id`) REFERENCES `civicrm_saved_search`(`id`) ON DELETE CASCADE', [], TRUE, NULL, FALSE, FALSE);
     return TRUE;
   }
 
